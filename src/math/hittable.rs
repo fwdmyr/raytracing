@@ -1,3 +1,4 @@
+use crate::graphics::material::*;
 use crate::math::interval::*;
 use crate::math::ray::*;
 use crate::math::vec3::*;
@@ -7,10 +8,11 @@ pub struct HitRecord {
     pub normal: Vec3,
     pub t: f32,
     pub front_facing: bool,
+    pub material: Material,
 }
 
 impl HitRecord {
-    pub fn new(point: Vec3, normal: Vec3, t: f32, front_facing: bool) -> Self {
+    pub fn new(point: Vec3, normal: Vec3, t: f32, front_facing: bool, material: Material) -> Self {
         let normal = match front_facing {
             true => normal,
             false => -normal,
@@ -20,6 +22,7 @@ impl HitRecord {
             normal,
             t,
             front_facing,
+            material,
         }
     }
 }

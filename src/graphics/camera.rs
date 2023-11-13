@@ -1,6 +1,7 @@
 use rand::Rng;
 
 use crate::graphics::image::*;
+use crate::graphics::material::*;
 use crate::math::hittable::*;
 use crate::math::interval::*;
 use crate::math::ray::*;
@@ -13,6 +14,7 @@ pub struct CameraParameters {
     focal_length: f32,
     viewport_height: f32,
     samples_per_pixel: u32,
+    max_ray_bounces: u32,
 }
 
 impl CameraParameters {
@@ -22,6 +24,7 @@ impl CameraParameters {
         focal_length: f32,
         viewport_height: f32,
         samples_per_pixel: u32,
+        max_ray_bounces: u32,
     ) -> Self {
         Self {
             aspect_ratio,
@@ -30,6 +33,7 @@ impl CameraParameters {
             focal_length,
             viewport_height,
             samples_per_pixel,
+            max_ray_bounces,
         }
     }
 }
@@ -44,6 +48,7 @@ pub struct Camera {
     image_width: u32,
     image_height: u32,
     samples_per_pixel: u32,
+    max_ray_bounces: u32,
 }
 
 impl Camera {
@@ -74,7 +79,7 @@ impl Camera {
             .into_iter()
             .fold(Pixel::default(), |acc, _| {
                 let ray = self.perturbed_ray(pixel_center);
-                acc + self.color_ray(&ray, obj)
+                acc + self.color_ray(&ray, obj, self.max_ray_bounces)
             });
 
         p.normalize(self.samples_per_pixel)
@@ -98,6 +103,7 @@ impl Camera {
         self.image_width = params.image_width;
         self.image_height = params.image_height;
         self.samples_per_pixel = params.samples_per_pixel;
+        self.max_ray_bounces = params.max_ray_bounces;
 
         let viewport_width = params.viewport_height * self.aspect_ratio;
 
@@ -111,10 +117,15 @@ impl Camera {
         self.zero = viewport_ul + 0.5 * (self.du + self.dv);
     }
 
-    fn color_ray<T: Hittable>(&self, ray: &Ray, obj: &T) -> Pixel {
-        match obj.hit(ray, Interval::new(0.0, std::f32::INFINITY)) {
-            Some(record) => Pixel::from_hit(&ray.at(record.t)),
-            None => Pixel::from_miss(&ray.direction()),
+    fn color_ray<T: Hittable>(&self, ray: &Ray, obj: &T, depth: u32) -> Pixel {
+        match obj.hit(ray, Interval::new(0.001, std::f32::INFINITY)) {
+            Some(record) if depth > 0 => {
+                match Material::scatter(ray, &record.point, &record.normal, record.material) {
+                    Some(res) => res.attenuation * self.color_ray(&res.ray, obj, depth - 1),
+                    None => Pixel::default(),
+                }
+            }
+            _ => Pixel::from_miss(&ray.direction()),
         }
     }
 }

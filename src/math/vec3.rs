@@ -1,3 +1,4 @@
+use rand::Rng;
 use std::ops;
 
 #[derive(Default, Debug, Clone, Copy)]
@@ -10,6 +11,41 @@ pub struct Vec3 {
 impl Vec3 {
     pub fn new(x: f32, y: f32, z: f32) -> Self {
         Self { x, y, z }
+    }
+
+    pub fn near_zero(&self) -> bool {
+        let eps = 1e-8 as f32;
+        self.x.abs() < eps && self.y.abs() < eps && self.z.abs() < eps
+    }
+
+    pub fn random(lb: f32, ub: f32) -> Self {
+        let mut rng = rand::thread_rng();
+        Self {
+            x: rng.gen_range(lb..=ub),
+            y: rng.gen_range(lb..=ub),
+            z: rng.gen_range(lb..=ub),
+        }
+    }
+
+    pub fn random_unit_vector() -> Self {
+        Vec3::random_in_unit_sphere().unit_vector()
+    }
+
+    pub fn random_on_hemisphere(normal: &Self) -> Self {
+        let random_on_unit_sphere = Vec3::random_unit_vector();
+        match random_on_unit_sphere.dot(normal) {
+            x if x > 0.0 => random_on_unit_sphere,
+            _ => -random_on_unit_sphere,
+        }
+    }
+
+    fn random_in_unit_sphere() -> Self {
+        loop {
+            let p = Vec3::random(-1.0, 1.0);
+            if p.norm_squared() < 1.0 {
+                return p;
+            }
+        }
     }
 
     pub fn norm_squared(&self) -> f32 {

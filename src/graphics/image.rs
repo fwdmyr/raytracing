@@ -47,7 +47,7 @@ impl Image {
     }
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct Pixel {
     pub r: f32,
     pub g: f32,
@@ -79,6 +79,10 @@ impl Pixel {
         }
     }
 
+    fn to_gamma2_repr(val: f32) -> f32 {
+        val.sqrt()
+    }
+
     fn to_8bit_repr(val: f32) -> u32 {
         (255.999 * val) as u32
     }
@@ -92,6 +96,30 @@ impl ops::Add for Pixel {
             r: self.r + other.r,
             g: self.g + other.g,
             b: self.b + other.b,
+        }
+    }
+}
+
+impl ops::Mul for Pixel {
+    type Output = Pixel;
+
+    fn mul(self, other: Self) -> Self::Output {
+        Self {
+            r: self.r * other.r,
+            g: self.g * other.g,
+            b: self.b * other.b,
+        }
+    }
+}
+
+impl ops::Mul<Pixel> for f32 {
+    type Output = Pixel;
+
+    fn mul(self, other: Pixel) -> Self::Output {
+        Pixel {
+            r: self * other.r,
+            g: self * other.g,
+            b: self * other.b,
         }
     }
 }
@@ -110,9 +138,9 @@ impl ToString for Pixel {
     fn to_string(&self) -> String {
         format!(
             "{} {} {}",
-            Pixel::to_8bit_repr(self.r),
-            Pixel::to_8bit_repr(self.g),
-            Pixel::to_8bit_repr(self.b)
+            Pixel::to_8bit_repr(Pixel::to_gamma2_repr(self.r)),
+            Pixel::to_8bit_repr(Pixel::to_gamma2_repr(self.g)),
+            Pixel::to_8bit_repr(Pixel::to_gamma2_repr(self.b)),
         )
     }
 }

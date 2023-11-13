@@ -1,3 +1,4 @@
+use crate::graphics::material::*;
 use crate::math::hittable::*;
 use crate::math::interval::*;
 use crate::math::ray::*;
@@ -6,6 +7,7 @@ use crate::math::vec3::*;
 pub struct Sphere {
     pub center: Vec3,
     pub radius: f32,
+    pub material: Material,
 }
 
 struct Discriminant {
@@ -38,8 +40,12 @@ impl Discriminant {
 }
 
 impl Sphere {
-    pub fn new(center: Vec3, radius: f32) -> Self {
-        Self { center, radius }
+    pub fn new(center: Vec3, radius: f32, material: Material) -> Self {
+        Self {
+            center,
+            radius,
+            material,
+        }
     }
 
     fn root(&self, ray: &Ray, hit_interval: Interval<f32>) -> Option<f32> {
@@ -83,9 +89,10 @@ impl Hittable for Sphere {
                 let point = ray.at(t);
                 let normal = 1.0 / self.radius * (point - self.center);
                 let front_facing = ray.direction().dot(&normal) < 0.0;
-                Some(HitRecord::new(point, normal, t, front_facing))
+                Some(HitRecord::new(point, normal, t, front_facing, self.material))
             }
             None => None,
         }
     }
 }
+

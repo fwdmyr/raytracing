@@ -4,15 +4,15 @@ use std::io::Write;
 use crate::math::vec3::*;
 
 pub struct Image {
-    pub width: u16,
-    pub height: u16,
+    pub width: u32,
+    pub height: u32,
     pub aspect_ratio: f32,
 }
 
 impl Image {
-    pub fn new(width: u16, aspect_ratio: f32) -> Image {
-        let height = (width as f32 / aspect_ratio) as u16;
-        assert_ne!(height, 0u16);
+    pub fn new(width: u32, aspect_ratio: f32) -> Image {
+        let height = (width as f32 / aspect_ratio) as u32;
+        assert_ne!(height, 0u32);
         Image {
             width,
             height,
@@ -20,7 +20,7 @@ impl Image {
         }
     }
 
-    pub fn write_gradient_to_file<C: Fn(u16, u16) -> Pixel>(
+    pub fn write_gradient_to_file<C: Fn(u32, u32) -> Pixel>(
         &self,
         path: &str,
         to_pixel: C,
@@ -47,35 +47,32 @@ impl Image {
 
 #[derive(Default, Debug, Clone)]
 pub struct Pixel {
-    pub r: u16,
-    pub g: u16,
-    pub b: u16,
+    pub r: u32,
+    pub g: u32,
+    pub b: u32,
 }
 
 impl Pixel {
-    fn to_8bit_repr(val: f32) -> u16 {
-        (255.999 * val) as u16
+    pub fn from_miss(direction: &Vec3) -> Pixel {
+        let unit_direction = direction.unit_vector();
+        let alpha = 0.5 * (unit_direction.y + 1.0);
+        let vec = (1.0 - alpha) * Vec3::new(1.0, 1.0, 1.0) + alpha * Vec3::new(0.5, 0.7, 1.0);
+        Pixel::from(&vec)
     }
 
-    fn to_float_repr(val: u16) -> f32 {
+    pub fn from_hit(direction: &Vec3) -> Pixel {
+        let mut n = (direction - Vec3::new(0.0, 0.0, -1.0)).unit_vector();
+        n += Vec3::new(1.0, 1.0, 1.0);
+        n *= 0.5;
+        Pixel::from(&n)
+    }
+
+    fn to_8bit_repr(val: f32) -> u32 {
+        (255.999 * val) as u32
+    }
+
+    fn to_float_repr(val: u32) -> f32 {
         val as f32 / 255.999
-    }
-}
-
-impl ToString for Pixel {
-    fn to_string(&self) -> String {
-        format!("{} {} {}", self.r, self.g, self.b)
-    }
-}
-
-impl From<(f32, f32, f32)> for Pixel {
-    fn from(rgb: (f32, f32, f32)) -> Self {
-        let (r, g, b) = rgb;
-        Pixel {
-            r: Pixel::to_8bit_repr(r),
-            g: Pixel::to_8bit_repr(g),
-            b: Pixel::to_8bit_repr(b),
-        }
     }
 }
 
@@ -89,9 +86,15 @@ impl From<&Vec3> for Pixel {
     }
 }
 
-impl From<(u16, u16, u16)> for Pixel {
-    fn from(rgb: (u16, u16, u16)) -> Self {
+impl From<(u32, u32, u32)> for Pixel {
+    fn from(rgb: (u32, u32, u32)) -> Self {
         let (r, g, b) = rgb;
         Pixel { r, g, b }
+    }
+}
+
+impl ToString for Pixel {
+    fn to_string(&self) -> String {
+        format!("{} {} {}", self.r, self.g, self.b)
     }
 }

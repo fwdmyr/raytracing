@@ -1,3 +1,4 @@
+use crate::math::interval::*;
 use crate::math::ray::*;
 use crate::math::vec3::*;
 
@@ -23,22 +24,6 @@ impl HitRecord {
     }
 }
 
-#[derive(Clone, Copy)]
-pub struct HitInterval {
-    pub lb: f32,
-    pub ub: f32,
-}
-
-impl HitInterval {
-    pub fn new(lb: f32, ub: f32) -> Self {
-        Self { lb, ub }
-    }
-
-    pub fn contains(&self, val: f32) -> bool {
-        val > self.lb && val < self.ub
-    }
-}
-
 pub struct HittableList {
     objects: Vec<Box<dyn Hittable>>,
 }
@@ -61,7 +46,7 @@ impl HittableList {
 }
 
 impl Hittable for HittableList {
-    fn hit(&self, ray: &Ray, hit_interval: HitInterval) -> Option<HitRecord> {
+    fn hit(&self, ray: &Ray, hit_interval: Interval) -> Option<HitRecord> {
         self.objects
             .iter()
             .filter_map(|x| x.hit(&ray, hit_interval))
@@ -70,5 +55,5 @@ impl Hittable for HittableList {
 }
 
 pub trait Hittable {
-    fn hit(&self, ray: &Ray, hit_interval: HitInterval) -> Option<HitRecord>;
+    fn hit(&self, ray: &Ray, hit_interval: Interval) -> Option<HitRecord>;
 }

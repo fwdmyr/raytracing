@@ -46,7 +46,7 @@ impl HittableList {
 }
 
 impl Hittable for HittableList {
-    fn hit(&self, ray: &Ray, hit_interval: Interval) -> Option<HitRecord> {
+    fn hit(&self, ray: &Ray, hit_interval: Interval<f32>) -> Option<HitRecord> {
         self.objects
             .iter()
             .filter_map(|x| x.hit(&ray, hit_interval))
@@ -55,5 +55,5 @@ impl Hittable for HittableList {
 }
 
 pub trait Hittable {
-    fn hit(&self, ray: &Ray, hit_interval: Interval) -> Option<HitRecord>;
+    fn hit(&self, ray: &Ray, hit_interval: Interval<f32>) -> Option<HitRecord>;
 }

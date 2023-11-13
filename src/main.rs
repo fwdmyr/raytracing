@@ -8,15 +8,17 @@ use crate::math::vec3::*;
 
 fn main() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
     const ASPECT_RATIO: f32 = 16.0 / 9.0;
-    const IMAGE_WIDTH: u32 = 2160;
+    const IMAGE_WIDTH: u32 = 480;
     const FOCAL_LENGTH: f32 = 1.0;
     const VIEWPORT_HEIGHT: f32 = 2.0;
+    const SAMPLES_PER_PIXEL: u32 = 100;
 
     let params = CameraParameters::new(
         ASPECT_RATIO,
         IMAGE_WIDTH,
         FOCAL_LENGTH,
         VIEWPORT_HEIGHT,
+        SAMPLES_PER_PIXEL,
     );
 
     let camera = Camera::new(params);

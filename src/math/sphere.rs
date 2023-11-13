@@ -42,7 +42,7 @@ impl Sphere {
         Self { center, radius }
     }
 
-    fn root(&self, ray: &Ray, hit_interval: Interval) -> Option<f32> {
+    fn root(&self, ray: &Ray, hit_interval: Interval<f32>) -> Option<f32> {
         let oc = ray.origin() - self.center;
         let a = ray.direction().norm_squared();
         let b_halfs = oc.dot(ray.direction());
@@ -55,7 +55,11 @@ impl Sphere {
         }
     }
 
-    fn root_impl(&self, discriminant: &mut Discriminant, hit_interval: Interval) -> Option<f32> {
+    fn root_impl(
+        &self,
+        discriminant: &mut Discriminant,
+        hit_interval: Interval<f32>,
+    ) -> Option<f32> {
         let sqrtd = discriminant.eval().sqrt();
         let root = -1.0 * (discriminant.b_halfs + sqrtd) / discriminant.a;
         match hit_interval.surrounds(root) {
@@ -72,7 +76,7 @@ impl Sphere {
 }
 
 impl Hittable for Sphere {
-    fn hit(&self, ray: &Ray, hit_interval: Interval) -> Option<HitRecord> {
+    fn hit(&self, ray: &Ray, hit_interval: Interval<f32>) -> Option<HitRecord> {
         match self.root(&ray, hit_interval) {
             Some(root) => {
                 let t = root;

@@ -1,6 +1,8 @@
 use std::fs::File;
 use std::io::Write;
+use std::ops;
 
+use crate::math::interval::*;
 use crate::math::vec3::*;
 
 pub struct Image {
@@ -47,9 +49,9 @@ impl Image {
 
 #[derive(Default, Debug, Clone)]
 pub struct Pixel {
-    pub r: u32,
-    pub g: u32,
-    pub b: u32,
+    pub r: f32,
+    pub g: f32,
+    pub b: f32,
 }
 
 impl Pixel {
@@ -67,34 +69,50 @@ impl Pixel {
         Pixel::from(&n)
     }
 
+    pub fn normalize(self, n: u32) -> Pixel {
+        let range = Interval::new(0.0, 1.0);
+        let n_f = n as f32;
+        Pixel {
+            r: range.clamp(1.0 / n_f * self.r),
+            g: range.clamp(1.0 / n_f * self.g),
+            b: range.clamp(1.0 / n_f * self.b),
+        }
+    }
+
     fn to_8bit_repr(val: f32) -> u32 {
         (255.999 * val) as u32
     }
+}
 
-    fn to_float_repr(val: u32) -> f32 {
-        val as f32 / 255.999
+impl ops::Add for Pixel {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        Self {
+            r: self.r + other.r,
+            g: self.g + other.g,
+            b: self.b + other.b,
+        }
     }
 }
 
 impl From<&Vec3> for Pixel {
     fn from(vec: &Vec3) -> Self {
         Pixel {
-            r: Pixel::to_8bit_repr(vec.x),
-            g: Pixel::to_8bit_repr(vec.y),
-            b: Pixel::to_8bit_repr(vec.z),
+            r: vec.x,
+            g: vec.y,
+            b: vec.z,
         }
-    }
-}
-
-impl From<(u32, u32, u32)> for Pixel {
-    fn from(rgb: (u32, u32, u32)) -> Self {
-        let (r, g, b) = rgb;
-        Pixel { r, g, b }
     }
 }
 
 impl ToString for Pixel {
     fn to_string(&self) -> String {
-        format!("{} {} {}", self.r, self.g, self.b)
+        format!(
+            "{} {} {}",
+            Pixel::to_8bit_repr(self.r),
+            Pixel::to_8bit_repr(self.g),
+            Pixel::to_8bit_repr(self.b)
+        )
     }
 }

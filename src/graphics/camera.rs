@@ -1,3 +1,5 @@
+use rand::Rng;
+
 use crate::graphics::image::*;
 use crate::math::hittable::*;
 use crate::math::interval::*;
@@ -10,6 +12,7 @@ pub struct CameraParameters {
     image_height: u32,
     focal_length: f32,
     viewport_height: f32,
+    samples_per_pixel: u32,
 }
 
 impl CameraParameters {
@@ -18,6 +21,7 @@ impl CameraParameters {
         image_width: u32,
         focal_length: f32,
         viewport_height: f32,
+        samples_per_pixel: u32,
     ) -> Self {
         Self {
             aspect_ratio,
@@ -25,6 +29,7 @@ impl CameraParameters {
             image_height: (image_width as f32 / aspect_ratio) as u32,
             focal_length,
             viewport_height,
+            samples_per_pixel,
         }
     }
 }
@@ -38,6 +43,7 @@ pub struct Camera {
     aspect_ratio: f32,
     image_width: u32,
     image_height: u32,
+    samples_per_pixel: u32,
 }
 
 impl Camera {
@@ -56,19 +62,42 @@ impl Camera {
 
         let closure = |i: u32, j: u32| -> Pixel {
             let pixel_center = self.zero + i as f32 * self.du + j as f32 * self.dv;
-            let ray_direction = pixel_center - self.center;
-            let ray = Ray::new(self.center, ray_direction);
 
-            self.color_ray(&ray, obj)
+            self.sample_pixel(&pixel_center, obj)
         };
 
         image.write_gradient_to_file(path, closure).unwrap();
+    }
+
+    fn sample_pixel<T: Hittable>(&self, pixel_center: &Vec3, obj: &T) -> Pixel {
+        let p = (0..self.samples_per_pixel)
+            .into_iter()
+            .fold(Pixel::default(), |acc, _| {
+                let ray = self.perturbed_ray(pixel_center);
+                acc + self.color_ray(&ray, obj)
+            });
+
+        p.normalize(self.samples_per_pixel)
+    }
+
+    fn perturbed_ray(&self, pixel_center: &Vec3) -> Ray {
+        let perturbed_center = self.perturb(pixel_center);
+        let direction = perturbed_center - self.center;
+        Ray::new(self.center, direction)
+    }
+
+    fn perturb(&self, vec: &Vec3) -> Vec3 {
+        let mut rng = rand::thread_rng();
+        let pu = -0.5 + rng.gen::<f32>();
+        let pv = -0.5 + rng.gen::<f32>();
+        vec + (pu * self.du) + (pv * self.dv)
     }
 
     fn initialize(&mut self, params: CameraParameters) {
         self.aspect_ratio = params.aspect_ratio;
         self.image_width = params.image_width;
         self.image_height = params.image_height;
+        self.samples_per_pixel = params.samples_per_pixel;
 
         let viewport_width = params.viewport_height * self.aspect_ratio;
 

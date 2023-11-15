@@ -12,6 +12,7 @@ pub struct CameraParameters {
     image_width: u32,
     image_height: u32,
     focal_length: f32,
+    vertical_fov: f32,
     viewport_height: f32,
     samples_per_pixel: u32,
     max_ray_bounces: u32,
@@ -22,7 +23,7 @@ impl CameraParameters {
         aspect_ratio: f32,
         image_width: u32,
         focal_length: f32,
-        viewport_height: f32,
+        vertical_fov: f32,
         samples_per_pixel: u32,
         max_ray_bounces: u32,
     ) -> Self {
@@ -31,10 +32,29 @@ impl CameraParameters {
             image_width,
             image_height: (image_width as f32 / aspect_ratio) as u32,
             focal_length,
-            viewport_height,
+            viewport_height: 2.0
+                * (0.5 * vertical_fov * std::f32::consts::PI / 180.0).tan()
+                * focal_length,
+            vertical_fov,
             samples_per_pixel,
             max_ray_bounces,
         }
+    }
+}
+
+#[derive(Default)]
+pub struct CameraFrame {
+    u: Vec3,
+    v: Vec3,
+    w: Vec3,
+}
+
+impl CameraFrame {
+    pub fn new(lookfrom: Vec3, lookat: Vec3, vup: Vec3) -> Self {
+        let w = (lookfrom - lookat).unit_vector();
+        let u = vup.cross(&w).unit_vector();
+        let v = w.cross(&u);
+        Self { u, v, w }
     }
 }
 
@@ -49,6 +69,9 @@ pub struct Camera {
     image_height: u32,
     samples_per_pixel: u32,
     max_ray_bounces: u32,
+    viewport_height: f32,
+    vertical_fov: f32,
+    frame: CameraFrame,
 }
 
 impl Camera {
@@ -56,6 +79,29 @@ impl Camera {
         let mut cam = Self::default();
         cam.initialize(params);
         cam
+    }
+
+    pub fn set_frame(&mut self, lookfrom: Vec3, lookat: Vec3, vup: Vec3) {
+        self.center = lookfrom;
+
+        let focal_length = (lookfrom - lookat).norm();
+        let h = (0.5 * self.vertical_fov * std::f32::consts::PI / 180.0).tan();
+
+        self.frame = CameraFrame::new(lookfrom, lookat, vup);
+
+        self.viewport_height = 2.0 * h * focal_length;
+
+        let viewport_width = self.viewport_height * self.aspect_ratio;
+
+        let viewport_u = viewport_width * self.frame.u;
+        let viewport_v = self.viewport_height * -self.frame.v;
+
+        self.du = 1.0 / (self.image_width as f32) * viewport_u;
+        self.dv = 1.0 / (self.image_height as f32) * viewport_v;
+
+        let viewport_ul =
+            self.center - focal_length * self.frame.w - 0.5 * (viewport_u + viewport_v);
+        self.zero = viewport_ul + 0.5 * (self.du + self.dv);
     }
 
     pub fn set_center(&mut self, center: Vec3) {
@@ -104,6 +150,8 @@ impl Camera {
         self.image_height = params.image_height;
         self.samples_per_pixel = params.samples_per_pixel;
         self.max_ray_bounces = params.max_ray_bounces;
+        self.viewport_height = params.viewport_height;
+        self.vertical_fov = params.vertical_fov;
 
         let viewport_width = params.viewport_height * self.aspect_ratio;
 
@@ -119,12 +167,10 @@ impl Camera {
 
     fn color_ray<T: Hittable>(&self, ray: &Ray, obj: &T, depth: u32) -> Pixel {
         match obj.hit(ray, Interval::new(0.001, std::f32::INFINITY)) {
-            Some(record) if depth > 0 => {
-                match Material::scatter(ray, &record.point, &record.normal, record.material) {
-                    Some(res) => res.attenuation * self.color_ray(&res.ray, obj, depth - 1),
-                    None => Pixel::default(),
-                }
-            }
+            Some(record) if depth > 0 => match Material::scatter(ray, &record) {
+                Some(res) => res.attenuation * self.color_ray(&res.ray, obj, depth - 1),
+                None => Pixel::default(),
+            },
             _ => Pixel::from_miss(&ray.direction()),
         }
     }

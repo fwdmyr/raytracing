@@ -3,25 +3,36 @@ use crate::math::interval::*;
 use crate::math::ray::*;
 use crate::math::vec3::*;
 
+pub enum FacingDirection {
+    Front,
+    Back,
+}
+
 pub struct HitRecord {
     pub point: Vec3,
     pub normal: Vec3,
     pub t: f32,
-    pub front_facing: bool,
+    pub facing: FacingDirection,
     pub material: Material,
 }
 
 impl HitRecord {
-    pub fn new(point: Vec3, normal: Vec3, t: f32, front_facing: bool, material: Material) -> Self {
-        let normal = match front_facing {
-            true => normal,
-            false => -normal,
+    pub fn new(
+        point: Vec3,
+        normal: Vec3,
+        t: f32,
+        facing: FacingDirection,
+        material: Material,
+    ) -> Self {
+        let normal = match facing {
+            FacingDirection::Front => normal,
+            FacingDirection::Back => -normal,
         };
         Self {
             point,
             normal,
             t,
-            front_facing,
+            facing,
             material,
         }
     }

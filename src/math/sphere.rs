@@ -88,11 +88,13 @@ impl Hittable for Sphere {
                 let t = root;
                 let point = ray.at(t);
                 let normal = 1.0 / self.radius * (point - self.center);
-                let front_facing = ray.direction().dot(&normal) < 0.0;
-                Some(HitRecord::new(point, normal, t, front_facing, self.material))
+                let facing = match ray.direction().dot(&normal) < 0.0 {
+                    true => FacingDirection::Front,
+                    false => FacingDirection::Back,
+                };
+                Some(HitRecord::new(point, normal, t, facing, self.material))
             }
             None => None,
         }
     }
 }
-

@@ -16,6 +16,8 @@ pub struct CameraParameters {
     viewport_height: f32,
     samples_per_pixel: u32,
     max_ray_bounces: u32,
+    defocus_angle: f32,
+    focus_dist: f32,
 }
 
 impl CameraParameters {
@@ -26,6 +28,8 @@ impl CameraParameters {
         vertical_fov: f32,
         samples_per_pixel: u32,
         max_ray_bounces: u32,
+        defocus_angle: f32,
+        focus_dist: f32,
     ) -> Self {
         Self {
             aspect_ratio,
@@ -38,6 +42,8 @@ impl CameraParameters {
             vertical_fov,
             samples_per_pixel,
             max_ray_bounces,
+            defocus_angle,
+            focus_dist,
         }
     }
 }
@@ -59,6 +65,18 @@ impl CameraFrame {
 }
 
 #[derive(Default)]
+pub struct DefocusDisk {
+    u: Vec3,
+    v: Vec3,
+}
+
+impl DefocusDisk {
+    pub fn new(u: Vec3, v: Vec3) -> Self {
+        Self { u, v }
+    }
+}
+
+#[derive(Default)]
 pub struct Camera {
     center: Vec3,
     zero: Vec3,
@@ -71,7 +89,10 @@ pub struct Camera {
     max_ray_bounces: u32,
     viewport_height: f32,
     vertical_fov: f32,
+    defocus_angle: f32,
+    focus_dist: f32,
     frame: CameraFrame,
+    defocus_disk: DefocusDisk,
 }
 
 impl Camera {
@@ -84,12 +105,11 @@ impl Camera {
     pub fn set_frame(&mut self, lookfrom: Vec3, lookat: Vec3, vup: Vec3) {
         self.center = lookfrom;
 
-        let focal_length = (lookfrom - lookat).norm();
         let h = (0.5 * self.vertical_fov * std::f32::consts::PI / 180.0).tan();
 
         self.frame = CameraFrame::new(lookfrom, lookat, vup);
 
-        self.viewport_height = 2.0 * h * focal_length;
+        self.viewport_height = 2.0 * h * self.focus_dist;
 
         let viewport_width = self.viewport_height * self.aspect_ratio;
 
@@ -100,8 +120,14 @@ impl Camera {
         self.dv = 1.0 / (self.image_height as f32) * viewport_v;
 
         let viewport_ul =
-            self.center - focal_length * self.frame.w - 0.5 * (viewport_u + viewport_v);
+            self.center - self.focus_dist * self.frame.w - 0.5 * (viewport_u + viewport_v);
         self.zero = viewport_ul + 0.5 * (self.du + self.dv);
+
+        let defocus_radius =
+            self.focus_dist * (0.5 * self.defocus_angle * std::f32::consts::PI / 180.0).tan();
+
+        self.defocus_disk =
+            DefocusDisk::new(defocus_radius * self.frame.u, defocus_radius * self.frame.v);
     }
 
     pub fn set_center(&mut self, center: Vec3) {
@@ -133,8 +159,18 @@ impl Camera {
 
     fn perturbed_ray(&self, pixel_center: &Vec3) -> Ray {
         let perturbed_center = self.perturb(pixel_center);
-        let direction = perturbed_center - self.center;
-        Ray::new(self.center, direction)
+        let origin = if self.defocus_angle <= 0.0 {
+            self.center
+        } else {
+            self.defocus_disk_sample()
+        };
+        let direction = perturbed_center - origin;
+        Ray::new(origin, direction)
+    }
+
+    fn defocus_disk_sample(&self) -> Vec3 {
+        let p = Vec3::random_in_unit_disk();
+        self.center + p.x * self.defocus_disk.u + p.y * self.defocus_disk.v
     }
 
     fn perturb(&self, vec: &Vec3) -> Vec3 {
@@ -152,6 +188,8 @@ impl Camera {
         self.max_ray_bounces = params.max_ray_bounces;
         self.viewport_height = params.viewport_height;
         self.vertical_fov = params.vertical_fov;
+        self.defocus_angle = params.defocus_angle;
+        self.focus_dist = params.focus_dist;
 
         let viewport_width = params.viewport_height * self.aspect_ratio;
 

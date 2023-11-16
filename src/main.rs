@@ -10,11 +10,13 @@ use crate::math::vec3::*;
 
 fn main() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
     const ASPECT_RATIO: f32 = 16.0 / 9.0;
-    const IMAGE_WIDTH: u32 = 1080;
+    const IMAGE_WIDTH: u32 = 400;
     const FOCAL_LENGTH: f32 = 1.0;
-    const VERTICAL_FOV: f32 = 40.0;
+    const VERTICAL_FOV: f32 = 20.0;
     const SAMPLES_PER_PIXEL: u32 = 100;
     const MAX_RAY_BOUNCES: u32 = 10;
+    const DEFOCUS_ANGLE: f32 = 10.0;
+    const FOCUS_DIST: f32 = 3.4;
 
     let params = CameraParameters::new(
         ASPECT_RATIO,
@@ -23,6 +25,8 @@ fn main() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
         VERTICAL_FOV,
         SAMPLES_PER_PIXEL,
         MAX_RAY_BOUNCES,
+        DEFOCUS_ANGLE,
+        FOCUS_DIST,
     );
 
     let mut camera = Camera::new(params);

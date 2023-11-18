@@ -1,24 +1,20 @@
-use crate::graphics::image::*;
-use crate::math::hittable::*;
-use crate::math::ray::*;
-use crate::math::vec3::*;
+use crate::geometry::{hit_record::{FacingDirection, HitRecord}, ray::Ray};
+use crate::graphics::pixel::Pixel;
+use crate::materials::scatter::{Scatter, ScatterMode, ScatterResult};
+use crate::math::vec3::Vec3;
 
 use rand::Rng;
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub enum Material {
     Lambertian(Pixel),
     Metal(Pixel, f32),
     Dielectric(f32),
 }
 
-pub trait Scatter {
-    fn scatter(ray: &Ray, record: &HitRecord) -> Option<ScatterResult>;
-}
-
 impl Scatter for Material {
     fn scatter(ray: &Ray, record: &HitRecord) -> Option<ScatterResult> {
-        match record.material {
+        match record.material.clone() {
             Material::Lambertian(albedo) => Material::lambertian_impl(record, albedo),
             Material::Metal(albedo, fuzz) => Material::metal_impl(ray, record, albedo, fuzz),
             Material::Dielectric(refr_index) => Material::dielectric_impl(ray, record, refr_index),
@@ -26,22 +22,16 @@ impl Scatter for Material {
     }
 }
 
-pub enum ScatterMode {
-    Reflect,
-    Refract,
-    Absorb,
-}
-
 impl Material {
     fn lambertian_impl(record: &HitRecord, albedo: Pixel) -> Option<ScatterResult> {
-        let mut scatter_direction = record.normal + Vec3::random_unit_vector();
+        let mut scatter_direction = &record.normal + Vec3::random_unit_vector();
 
         if scatter_direction.near_zero() {
-            scatter_direction = record.normal;
+            scatter_direction = record.normal.clone();
         }
 
         Some(ScatterResult::new(
-            Ray::new(record.point, scatter_direction),
+            Ray::new(record.point.clone(), scatter_direction),
             albedo,
         ))
     }
@@ -56,7 +46,7 @@ impl Material {
             Material::reflect(&ray.direction().unit_vector(), &record.normal);
         reflect_direction += fuzz.clamp(0.0, 1.0) * Vec3::random_unit_vector();
 
-        let ray = Ray::new(record.point, reflect_direction);
+        let ray = Ray::new(record.point.clone(), reflect_direction);
 
         match ray.direction().dot(&record.normal) > 0.0 {
             true => Some(ScatterResult::new(ray, albedo)),
@@ -74,7 +64,7 @@ impl Material {
             FacingDirection::Front => 1.0 / refraction_index,
             FacingDirection::Back => refraction_index,
         };
-        let unit_direction = ray.direction().unit_vector();
+        let unit_direction = &ray.direction().unit_vector();
 
         let cos_theta = record.normal.dot(&-unit_direction).min(1.0);
         let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
@@ -82,13 +72,13 @@ impl Material {
         match Material::scatter_mode(sin_theta, cos_theta, refraction_ratio) {
             ScatterMode::Reflect => {
                 let direction = Material::reflect(&unit_direction, &record.normal);
-                let ray = Ray::new(record.point, direction);
+                let ray = Ray::new(record.point.clone(), direction);
                 Some(ScatterResult::new(ray, attenuation))
             }
             ScatterMode::Refract => {
                 let direction =
                     Material::refract(&unit_direction, &record.normal, refraction_ratio);
-                let ray = Ray::new(record.point, direction);
+                let ray = Ray::new(record.point.clone(), direction);
                 Some(ScatterResult::new(ray, attenuation))
             }
             ScatterMode::Absorb => None,
@@ -127,16 +117,5 @@ impl Material {
         let refr_perpendicular = ratio * (uv + cos_theta * n);
         let refr_parallel = -(1.0 - refr_perpendicular.norm_squared()).abs().sqrt() * n;
         refr_perpendicular + refr_parallel
-    }
-}
-
-pub struct ScatterResult {
-    pub ray: Ray,
-    pub attenuation: Pixel,
-}
-
-impl ScatterResult {
-    pub fn new(ray: Ray, attenuation: Pixel) -> Self {
-        Self { ray, attenuation }
     }
 }

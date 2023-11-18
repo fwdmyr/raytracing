@@ -1,4 +1,4 @@
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct Interval<T>
 where
     T: std::cmp::PartialOrd,

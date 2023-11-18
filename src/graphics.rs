@@ -1,3 +1,4 @@
 pub mod image;
+pub mod pixel;
 pub mod camera;
-pub mod material;
+pub mod renderer;

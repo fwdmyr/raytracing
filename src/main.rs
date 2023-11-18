@@ -4,48 +4,13 @@ pub mod materials;
 pub mod math;
 
 use geometry::{hittable_list::HittableList, sphere::Sphere};
-use graphics::{
-    camera::{Camera, CameraFrame, CameraParameters},
-    image::Image,
-    pixel::Pixel,
-    renderer::Renderer,
-};
+use graphics::{pixel::Pixel, renderer::RendererBuilder};
 use materials::material::Material;
 use math::vec3::Vec3;
 
 use rand::Rng;
 
-fn main() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
-    const ASPECT_RATIO: f32 = 16.0 / 9.0;
-    const IMAGE_WIDTH: u32 = 480;
-    const VERTICAL_FOV: f32 = 20.0;
-    const SAMPLES_PER_PIXEL: u32 = 1;
-    const MAX_RAY_BOUNCES: u32 = 1;
-    const DEFOCUS_ANGLE: f32 = 0.6;
-    const FOCUS_DIST: f32 = 10.0;
-
-    let params = CameraParameters::new(
-        ASPECT_RATIO,
-        IMAGE_WIDTH,
-        VERTICAL_FOV,
-        SAMPLES_PER_PIXEL,
-        MAX_RAY_BOUNCES,
-        DEFOCUS_ANGLE,
-        FOCUS_DIST,
-    );
-
-    let lookfrom = Vec3::new(13.0, 2.0, 3.0);
-    let lookat = Vec3::new(0.0, 0.0, 0.0);
-    let vup = Vec3::new(0.0, 1.0, 0.0);
-
-    let frame = CameraFrame::new(lookfrom, lookat, vup);
-
-    let camera = Camera::new(params, frame);
-
-    let path = "/home/felix/Projects/raytracing_in_a_weekend/results/sphere_world.ppm";
-
-    let renderer = Renderer::new(camera, Image::new(480, 16.0 / 9.0));
-
+fn build_sphere_world() -> HittableList {
     let mut world = HittableList::new();
 
     let ground_material = Material::Lambertian(Pixel::from(&Vec3::new(0.5, 0.5, 0.5)));
@@ -109,6 +74,16 @@ fn main() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
         1.0,
         material,
     )));
+
+    world
+}
+
+fn main() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
+    let path = "/home/felix/Projects/raytracing_in_a_weekend/results/sphere_world.ppm";
+
+    let world = build_sphere_world();
+
+    let renderer = RendererBuilder::default().build();
 
     renderer.render(path, &world);
 

@@ -5,6 +5,24 @@ use crate::math::{interval::Interval, vec3::Vec3};
 
 use rand::Rng;
 
+#[derive(Default)]
+pub struct RendererBuilder {
+    camera: Camera,
+    image: Image,
+}
+
+impl RendererBuilder {
+    pub fn with_default(mut self) -> Self {
+        self.image = Image::default();
+        self.camera = Camera::default();
+        self
+    }
+
+    pub fn build(self) -> Renderer {
+        Renderer::new(self.camera, self.image)
+    }
+}
+
 pub struct Renderer {
     camera: Camera,
     image: Image,

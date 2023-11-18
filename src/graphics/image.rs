@@ -9,6 +9,15 @@ pub struct Image {
     pub aspect_ratio: f32,
 }
 
+impl Default for Image {
+    fn default() -> Self {
+        const ASPECT_RATIO: f32 = 16.0 / 9.0;
+        const IMAGE_WIDTH: u32 = 1280;
+
+        Image::new(IMAGE_WIDTH, ASPECT_RATIO)
+    }
+}
+
 impl Image {
     pub fn new(width: u32, aspect_ratio: f32) -> Image {
         let height = (width as f32 / aspect_ratio) as u32;

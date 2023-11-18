@@ -68,7 +68,6 @@ impl DefocusDisk {
     }
 }
 
-#[derive(Default)]
 pub struct Camera {
     pub zero: Vec3,
     pub du: Vec3,
@@ -80,41 +79,70 @@ pub struct Camera {
     pub defocus_disk: DefocusDisk,
 }
 
+impl Default for Camera {
+    fn default() -> Self {
+        const ASPECT_RATIO: f32 = 16.0 / 9.0;
+        const IMAGE_WIDTH: u32 = 1280;
+        const VERTICAL_FOV: f32 = 20.0;
+        const SAMPLES_PER_PIXEL: u32 = 100;
+        const MAX_RAY_BOUNCES: u32 = 10;
+        const DEFOCUS_ANGLE: f32 = 0.6;
+        const FOCUS_DIST: f32 = 10.0;
+
+        let params = CameraParameters::new(
+            ASPECT_RATIO,
+            IMAGE_WIDTH,
+            VERTICAL_FOV,
+            SAMPLES_PER_PIXEL,
+            MAX_RAY_BOUNCES,
+            DEFOCUS_ANGLE,
+            FOCUS_DIST,
+        );
+
+        let lookfrom = Vec3::new(13.0, 2.0, 3.0);
+        let lookat = Vec3::new(0.0, 0.0, 0.0);
+        let vup = Vec3::new(0.0, 1.0, 0.0);
+
+        let frame = CameraFrame::new(lookfrom, lookat, vup);
+
+        Camera::new(params, frame)
+    }
+}
+
 impl Camera {
     pub fn new(params: CameraParameters, frame: CameraFrame) -> Self {
-        let mut cam = Self::default();
-        cam.initialize(params, frame);
-        cam
-    }
-
-    fn initialize(&mut self, params: CameraParameters, frame: CameraFrame) {
-        self.samples_per_pixel = params.samples_per_pixel;
-        self.max_ray_bounces = params.max_ray_bounces;
-        self.defocus_angle = params.defocus_angle;
-        self.frame = frame;
+        let samples_per_pixel = params.samples_per_pixel;
+        let max_ray_bounces = params.max_ray_bounces;
+        let defocus_angle = params.defocus_angle;
 
         let h = (0.5 * params.vertical_fov * std::f32::consts::PI / 180.0).tan();
 
         let viewport_height = 2.0 * h * params.focus_dist;
         let viewport_width = viewport_height * params.aspect_ratio;
 
-        let viewport_u = viewport_width * &self.frame.u;
-        let viewport_v = viewport_height * -&self.frame.v;
+        let viewport_u = viewport_width * &frame.u;
+        let viewport_v = viewport_height * -&frame.v;
 
-        self.du = 1.0 / (params.image_width as f32) * &viewport_u;
-        self.dv = 1.0 / (params.image_height as f32) * &viewport_v;
+        let du = 1.0 / (params.image_width as f32) * &viewport_u;
+        let dv = 1.0 / (params.image_height as f32) * &viewport_v;
 
-        let viewport_ul = &self.frame.center
-            - params.focus_dist * &self.frame.w
-            - 0.5 * (viewport_u + viewport_v);
-        self.zero = viewport_ul + 0.5 * (&self.du + &self.dv);
+        let viewport_ul =
+            &frame.center - params.focus_dist * &frame.w - 0.5 * (viewport_u + viewport_v);
+        let zero = viewport_ul + 0.5 * (&du + &dv);
 
         let defocus_radius =
-            params.focus_dist * (0.5 * self.defocus_angle * std::f32::consts::PI / 180.0).tan();
+            params.focus_dist * (0.5 * defocus_angle * std::f32::consts::PI / 180.0).tan();
 
-        self.defocus_disk = DefocusDisk::new(
-            defocus_radius * &self.frame.u,
-            defocus_radius * &self.frame.v,
-        );
+        let defocus_disk = DefocusDisk::new(defocus_radius * &frame.u, defocus_radius * &frame.v);
+        Self {
+            zero,
+            du,
+            dv,
+            samples_per_pixel,
+            max_ray_bounces,
+            defocus_angle,
+            frame,
+            defocus_disk,
+        }
     }
 }
